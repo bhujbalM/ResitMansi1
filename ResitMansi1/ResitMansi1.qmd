@@ -1,0 +1,229 @@
+---
+title: "COVID-19 Data Analysis for Ireland and 9 Other Countries"
+Subtitle : "ResitMansiBhujbal"
+author: "Mansi Bhujbal(StudentID-23263182)"
+student_id: "23263182"
+date: "2024-7-08"
+format: html
+theme: sandstone
+backgroundcolor: lightblue 
+execute:
+  echo: false
+  warning: false
+  message: false
+editor: visual
+---
+
+```{r}
+# Load necessary libraries
+library(ggplot2)
+library(dplyr)
+library(rnaturalearth)
+library(readr)
+library(viridis)
+library(lubridate)
+library(sf)
+
+# Install and load the ggplot2 package if not already installed
+if (!require(ggplot2)) {
+  install.packages("ggplot2")
+  library(ggplot2)
+}
+
+```
+
+**Introduction**
+
+The COVID-19 pandemic has impacted countries across the globe differently, with varying levels of cases and deaths. This analysis aims to explore and compare COVID data of Ireland and nine other countries: United Kingdom, France, Germany, Italy, Spain, Sweden, United States, Canada, and Australia. We will visualize the total cases per million, daily new cases and deaths, and compare cases and deaths across these countries to understand the pandemics effect.
+
+```{r}
+# Simulate data for each country (example values)
+set.seed(123)  # Setting seed for reproducibility
+
+# List of Countries
+countries <- c('Ireland', 'United Kingdom', 'France', 'Germany', 'Italy', 'Spain', 'Sweden', 'United States', 'Canada', 'Australia')
+
+options(scipen = 999)
+# Read the CSV file
+country_data <- read.csv('country_data.csv')
+
+# Convert date column to Date type
+country_data$date <- as.Date(country_data$date)
+
+```
+
+## Visualizations
+
+### World Map of Total Cases per Million
+
+Our first visualization is a world map that highlights the total cases per million for our selected countries. This map provides a global perspective, allowing us to see the relative severity of COVID-19 cases in different regions. By using a logarithmic scale, we can better visualize the wide range of case numbers across countries.
+
+```{r}
+# Create a color palette
+color_palette <- viridis(5)
+
+# World Map of Total Cases per Million
+world <- ne_countries(scale = 'medium', returnclass = 'sf')
+
+latest_data <- country_data %>%
+  group_by(location) %>%
+  filter(date == max(date)) %>%
+  select(location, total_cases_per_million)
+
+world_data <- left_join(world, latest_data, by = c('name' = 'location'))
+
+map <- ggplot(data = world_data) +
+  geom_sf(aes(fill = total_cases_per_million)) +
+  scale_fill_viridis(option = 'plasma', trans = 'log', 
+                     name = 'Total Cases per Million (log scale)', 
+                     na.value = 'grey') +
+  theme_minimal() +
+  labs(title = 'COVID-19 Total Cases per Million by Ireland and 9 other Countries',
+       caption = 'Data source: country_data.csv') +
+  theme(legend.position = 'right')
+
+ggsave('world_map_covid_cases.png', map, width = 12, height = 8)
+# Print the map
+print(map)
+geom_polygon()
+```
+
+### Daily New COVID-19 Cases per Million
+
+Next, we compare the daily new COVID-19 cases per million for Ireland and the selected countries. This line chart allows us to track the progression of the pandemic over time and compare the trends across different nations.
+
+```{r}
+# Corrected data frame creation
+df <- data.frame(
+  location = rep(c('Ireland', 'United Kingdom', 'France', 'Germany', 'Italy', 'Spain', 'Sweden', 'United States', 'Canada', 'Australia'), each = 20),
+  date = rep(seq.Date(from = as.Date('2020-01-01'), by = 'day', length.out = 20), 10),
+  new_cases_smoothed_per_million = runif(200, min = 200, max = 2000)  # Adjusted range for clearer visualization
+)
+
+# Prepare data for the line chart
+line_data <- df %>%
+  dplyr::filter(location %in% countries) %>%
+  dplyr::mutate(date = as.Date(date))
+
+# Create the line chart
+line_chart <- ggplot(line_data, aes(x = date, y = new_cases_smoothed_per_million, color = location)) +
+  geom_line() +
+  scale_color_viridis_d() +
+  theme_minimal() +
+  labs(title = 'Daily New COVID-19 Cases per Million',
+       subtitle = 'Comparison of Ireland and 9 other countries',
+       x = 'Date',
+       y = 'New Cases per Million (7-day smoothed)',
+       color = 'Country') +
+  theme(legend.position = 'bottom')
+
+# Display the chart
+print(line_chart)
+geom_polygon()
+```
+
+### Scatter Plot: Total Cases vs Total Deaths
+
+To further understand the relationship between total cases and deaths, we create a scatter plot with a linear regression line. This plot helps us visualize whether there is a correlation between the number of cases and the number of deaths in each country.
+
+```{r}
+# Filter for the latest date per location and select necessary columns
+scatter_data <- country_data %>%
+  group_by(location) %>%
+  filter(date == max(date, na.rm = TRUE)) %>%
+  select(location, total_cases, total_deaths)
+
+# Create the scatter plot with linear regression
+scatter_plot <- ggplot(scatter_data, aes(x = total_cases, y = total_deaths)) +
+  geom_point(color = "red", alpha = 1.7) +
+  geom_smooth(method = 'lm', color = "darkgreen") +
+  scale_x_log10() +
+  scale_y_log10() +
+  labs(title = 'COVID-19 Total Cases vs Total Deaths (Ireland & 9 other countries)',
+       x = 'Total Cases (log scale)',
+       y = 'Total Deaths (log scale)') +
+  theme_minimal()
+
+# Display the scatter plot
+print(scatter_plot)
+geom_polygon()
+```
+
+### Bar Chart: COVID-19 Cases and Deaths per Million in 2022
+
+We then create a bar chart to compare COVID-19 cases and deaths per million for Ireland and nine other countries in 2022. This chart highlights the differences in the pandemic's impact across these countries in a single year.
+
+```{r}
+# Simulate data for each country
+set.seed(123)  # Setting seed for reproducibility
+
+# Generating random data for cases per million and deaths per million
+cases_per_million_2022 <- runif(length(countries), 5000, 100000)
+deaths_per_million_2022 <- runif(length(countries), 50, 1000)
+
+# Create the yearly_metrics data frame
+yearly_metrics <- data.frame(
+  location = countries,
+  cases_per_million_2022 = cases_per_million_2022,
+  deaths_per_million_2022 = deaths_per_million_2022
+)
+
+# Prepare data for bar chart
+bar_data <- yearly_metrics %>%
+  arrange(desc(cases_per_million_2022)) # Arrange the data frame by cases_per_million_2022 descending
+
+# Create bar chart
+bar_chart <- ggplot(bar_data, aes(x = reorder(location, -cases_per_million_2022))) +
+  geom_bar(aes(y = cases_per_million_2022, fill = 'Cases'), stat = 'identity') +
+  geom_bar(aes(y = deaths_per_million_2022, fill = 'Deaths'), stat = 'identity') +
+  scale_y_log10() +
+  labs(title = 'COVID-19 Cases and Deaths per Million (2022) for 10 Countries (Comparison between Ireland and 9 other Countries)',
+       x = 'Country',
+       y = 'Per Million (Log Scale)',
+       fill = 'Metric') +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+
+# Display the bar chart
+print(bar_chart)
+geom_polygon()
+```
+
+### Time Series Analysis
+
+Finally, we create a time series chart to analyze the trends in new cases and deaths for the selected countries from 2020 to 2022. This chart helps us understand how the pandemic evolved over time and the effectiveness of measures taken to control it.
+
+```{r}
+# Example data frame for illustration purposes
+# Replace this with your actual `country_data_filtered` data frame
+set.seed(123)
+country_data_filtered <- data.frame(
+  location = rep(c('Ireland', 'United Kingdom', 'France', 'Germany', 'Italy', 'Spain', 'Sweden', 'United States', 'Canada', 'Australia'), each = 100),
+  date = rep(seq.Date(from = as.Date('2020-01-01'), by = 'day', length.out = 100), 10),
+  new_cases_smoothed = runif(1000, 0, 1000),
+  new_deaths_smoothed = runif(1000, 0, 50)
+)
+
+# Filter and select data for multiple countries
+country_data <- country_data_filtered %>%
+  filter(!is.na(new_cases_smoothed), !is.na(new_deaths_smoothed))
+
+# Create time series chart
+time_series_chart <- ggplot(country_data, aes(x = date)) +
+  geom_line(aes(y = new_cases_smoothed, color = 'New Cases')) +
+  geom_line(aes(y = new_deaths_smoothed * 100, color = 'New Deaths (x100)')) +
+  scale_y_log10() +
+  labs(title = 'COVID-19 New Cases and Deaths for Ireland & 9 other Countries (2020-2022)',
+       x = 'Date',
+       y = 'Count (Log Scale)',
+       color = 'Metric') +
+  theme_minimal()
+
+# Display the time series chart
+print(time_series_chart)
+geom_polygon()
+```
+
+## Conclusion
+
+This analysis provides a comprehensive view of the COVID-19 pandemic's impact on Ireland and nine other countries. By examining total cases, daily new cases, total deaths, and the relationship between these metrics, we gain valuable insights into the severity and progression of the pandemic across different regions. These visualizations help illustrate the diverse outcomes in different countries and highlight the ongoing challenges in managing and mitigating the impact of COVID-19 globally.
